@@ -1,0 +1,8 @@
+dist
+target
+release
+src-tauri/gen
+fixtures
+assets
+docs
+package-lock.json
