@@ -14,12 +14,17 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      # TODO(T-002): add the Rust toolchain and cache steps of 07 §10.3 once rust-toolchain.toml exists.
+      - name: Install Rust toolchain from rust-toolchain.toml
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
       # TODO(T-027): add the Playwright steps of 07 §10.3 once e2e tests exist.
       - run: npm run build
-      # TODO(T-002): add the cargo steps of 07 §10.3 once the Rust workspace exists.
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+      - run: cargo test -p carabo-engine --release -- --ignored perf_
       # TODO(T-003): add `npm run licenses` and `npm run traceability` once their scripts exist.

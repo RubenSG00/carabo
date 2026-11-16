@@ -1,0 +1,4 @@
+[package]
+name = "carabo-engine"
+edition.workspace = true
+license.workspace = true
