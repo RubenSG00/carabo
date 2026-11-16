@@ -1,0 +1,25 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      # TODO(T-002): add the Rust toolchain and cache steps of 07 §10.3 once rust-toolchain.toml exists.
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      # TODO(T-027): add the Playwright steps of 07 §10.3 once e2e tests exist.
+      - run: npm run build
+      # TODO(T-002): add the cargo steps of 07 §10.3 once the Rust workspace exists.
+      # TODO(T-003): add `npm run licenses` and `npm run traceability` once their scripts exist.
