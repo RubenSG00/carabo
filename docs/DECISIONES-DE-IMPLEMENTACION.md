@@ -325,3 +325,15 @@ tarea (`docs/spec/00-indice.md` §6). Cada entrada se añade al final con esta p
 - **Decisión tomada:** T-009 no crea la prueba de invariantes ni `checkInvariants`. `createRhythmTrack` y `toggleStep` se prueban en `tracks.test.ts` y `patterns.test.ts`: caso normal, límites y cada motivo de rechazo, comprobando que un rechazo deja el documento igual. T-019 las incluirá, porque su criterio 1 exige las 40 funciones de `core/commands/`.
 - **Por qué:** para el orden del trabajo y el alcance de cada tarea manda 09 (00 §5), y T-009 no puede crear archivos de T-012 ni de T-019 (09 §1.3, regla 5).
 - **Archivos afectados:** `src/core/commands/tracks.test.ts`, `src/core/commands/patterns.test.ts`.
+
+## DI-39 · 2026-11-17 · T-010
+- **Hueco o contradicción:** 08 §5.1 y §5.2 piden montar los componentes con `mockBridge` y comprobar en sus pruebas lo que ha recibido el puente (`mockControl.calls`), y el criterio 1 de T-010 (09 §4) lo exige para una prueba de componente. Pero 04 §9 y la configuración de ESLint de 07 §5.4 prohíben que cualquier archivo de `src/ui/**`, también sus pruebas, importe de `src/bridge/`, y `mockControl` solo existe en `src/bridge/mockBridge.ts`.
+- **Decisión tomada:** solo los archivos de prueba de `src/ui/` que necesitan `mockControl` lo importan de `src/bridge/mockBridge.ts`, con un `// eslint-disable-next-line no-restricted-imports` en esa línea que cita 08 §5.1 y esta entrada. El código de los componentes sigue sin importar nada de `src/bridge/`, y `eslint.config.js` no cambia. La telemetría que necesitan las pruebas llega a `engineStore` a través de su manejador de eventos (`listenToBridge`) con una fuente falsa, sin importar tipos de `src/bridge/`.
+- **Por qué:** la regla de 04 §9 protege la dirección de las dependencias del programa, y una prueba no forma parte del programa. La excepción queda escrita en cada línea donde se usa, sin tocar la configuración de 07 §5 (09 §1.3, regla 4). Es lo más simple que cumple las dos cosas (00 §6, paso 2).
+- **Archivos afectados:** `src/ui/app/App.test.tsx`, `src/ui/app/TransportBar.test.tsx`.
+
+## DI-40 · 2026-11-17 · T-010
+- **Hueco o contradicción:** 03 §15 da a cada paso de la rejilla el nombre accesible `a11y.step` («{sound}, paso {n}»), pero no dice si `{n}` empieza en 0, como el paso en los datos, o en 1. 00 §3.5 solo dice que los compases se numeran desde 0 en los datos y desde 1 en pantalla.
+- **Decisión tomada:** `{n}` es el índice del paso en el patrón más 1: el primer paso de la fila del bombo se llama «Bombo, paso 1», y el último de un patrón de un compás en 4/4, «Bombo, paso 16».
+- **Por qué:** es la misma regla que 00 §3.5 da para los compases, y la de los números de pulso que 03 §8.1 pone sobre la rejilla, que empiezan en 1. Un usuario cuenta desde 1 (PD-01, 00 §6, paso 2).
+- **Archivos afectados:** `src/ui/rhythm/StepGrid.tsx`.

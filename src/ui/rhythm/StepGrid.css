@@ -1,0 +1,35 @@
+/* TODO(T-031): the measures, separations and colours of 03 §8.1 and §8.4, from theme.css (T-021). */
+.StepGrid {
+  overflow-x: auto;
+}
+
+.StepGrid-row {
+  display: flex;
+  align-items: center;
+}
+
+.StepGrid-name {
+  flex: none;
+  width: 10em;
+}
+
+.StepGrid-step {
+  display: block;
+  width: 2em;
+  height: 2em;
+  padding: 0;
+}
+
+/* A hit is shown with a square inside the step, not only with colour (03 §15). */
+.StepGrid-step.is-hit::after {
+  content: "";
+  display: block;
+  width: 50%;
+  height: 50%;
+  margin: auto;
+  background: currentColor;
+}
+
+.StepGrid-step.is-playing {
+  border-top: 3px solid currentColor;
+}

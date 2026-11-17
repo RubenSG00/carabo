@@ -1,0 +1,13 @@
+/* TODO(T-025): the measures and colours of 03 §3 and §5, from theme.css (T-021). */
+.TopBar {
+  display: flex;
+  justify-content: center;
+}
+
+.TopBar-tabs {
+  display: flex;
+}
+
+.TopBar-tab.is-active {
+  font-weight: 600;
+}

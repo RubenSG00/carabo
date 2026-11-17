@@ -1,0 +1,12 @@
+/* TODO(T-025): the measures and colours of 03 §3, from theme.css (T-021). */
+.App {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.App-tab {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
