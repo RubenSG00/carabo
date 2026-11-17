@@ -414,6 +414,9 @@ dependencies = [
 [[package]]
 name = "carabo-engine"
 version = "0.0.0"
+dependencies = [
+ "serde_json",
+]
 
 [[package]]
 name = "cargo-platform"
