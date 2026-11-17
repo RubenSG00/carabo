@@ -14,10 +14,13 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 
 use crate::audio_pool::AudioPool;
+use crate::constants::KIT_ROWS;
 use crate::error::EngineError;
 use crate::io::devices::{ActiveDevices, DeviceList};
 use crate::io::output::{open_default_output, OutputStream};
-use crate::rt::commands::{command_queue, CommandProducer, RtCommand};
+use crate::kits::{load_kits, Kits};
+use crate::project::{EngineProject, Preparer};
+use crate::rt::commands::{command_queue, CommandProducer, PlayMode, RtCommand};
 use crate::rt::processor::Processor;
 use crate::snapshot::EngineSnapshot;
 use crate::telemetry::{EngineEvent, SharedState, Telemetry};
@@ -81,9 +84,14 @@ pub struct Engine {
 /// Opens the output stream for a new `Processor`, or gives `None` if there is no output.
 type OpenOutput = fn(Processor, Arc<SharedState>) -> Option<OutputStream>;
 
+/// Slot of each track of the last snapshot, in its order (06 §18.1). Only the control thread
+/// and `EngineHandle::telemetry()` use it; never an audio thread.
+type TrackSlots = Arc<Mutex<Vec<(String, usize)>>>;
+
 impl Engine {
-    /// Starts the control thread and opens Windows' default output device. Without an output
-    /// device it starts all the same, with `output_available` set to `false` (06 §13.1).
+    /// Loads the three kits (06 §8.4), starts the control thread and opens Windows' default
+    /// output device. Without an output device it starts all the same, with
+    /// `output_available` set to `false` (06 §13.1). Fails if a kit cannot be loaded.
     pub fn start(config: EngineConfig) -> Result<Engine, EngineError> {
         Self::start_with(config, open_default_output)
     }
@@ -93,21 +101,22 @@ impl Engine {
         config: EngineConfig,
         open_output: OpenOutput,
     ) -> Result<Engine, EngineError> {
-        // TODO(T-007): load the three kits from `config.kits_dir` and give each Processor a
-        // reference to them (06 §8.4).
-        let EngineConfig { kits_dir: _ } = config;
+        let kits = Arc::new(load_kits(&config.kits_dir)?);
         let shared = Arc::new(SharedState::new());
         let events = Arc::new(Mutex::new(Vec::new()));
+        let track_slots: TrackSlots = Arc::new(Mutex::new(Vec::new()));
         let (messages, receiver) = mpsc::channel();
         let (ready, started) = mpsc::channel();
 
         let control = {
             let shared = Arc::clone(&shared);
             let events = Arc::clone(&events);
+            let track_slots = Arc::clone(&track_slots);
             thread::Builder::new()
                 .name("carabo-control".to_string())
                 .spawn(move || {
-                    let mut control = Control::start(shared, events, open_output);
+                    let mut control =
+                        Control::start(kits, shared, events, track_slots, open_output);
                     // The engine waits for this message; if it has gone, there is no one to tell.
                     let _ = ready.send(());
                     control.run(&receiver);
@@ -125,7 +134,7 @@ impl Engine {
                 messages,
                 shared,
                 events,
-                track_slots: Arc::new(Mutex::new(Vec::new())),
+                track_slots,
             },
             control: Some(control),
         })
@@ -154,27 +163,41 @@ pub struct EngineHandle {
     messages: Sender<Message>,
     shared: Arc<SharedState>,
     events: Arc<Mutex<Vec<EngineEvent>>>,
-    /// Slot of each track of the last snapshot, in its order (06 §18.1). Only the control
-    /// thread and `telemetry()` use it; never an audio thread.
-    track_slots: Arc<Mutex<Vec<(String, usize)>>>,
+    track_slots: TrackSlots,
 }
 
 impl EngineHandle {
-    /// Validates `snapshot` (06 §5.5) and hands it to the engine (06 §5.3).
-    // TODO(T-007): validation, preparation and delivery to the output thread.
-    pub fn set_project(&self, _snapshot: EngineSnapshot) -> Result<(), EngineError> {
-        not_implemented()
+    /// Validates `snapshot` on the calling thread (06 §5.5) and hands it to the control thread,
+    /// which prepares it and delivers it to the output thread (06 §5.3). An invalid snapshot
+    /// gives `INVALID_SNAPSHOT` and the engine goes on with the previous one.
+    pub fn set_project(&self, snapshot: EngineSnapshot) -> Result<(), EngineError> {
+        snapshot.validate()?;
+        self.request(|reply| Message::SetProject(snapshot, reply))
     }
 
-    /// Starts playing in the requested mode. `NO_OUTPUT_DEVICE` without an output stream.
-    // TODO(T-007): pattern mode; TODO(T-043): song mode.
-    pub fn play(&self, _request: PlayRequest) -> Result<(), EngineError> {
-        not_implemented()
+    /// Starts playing in the requested mode. `NO_OUTPUT_DEVICE` without an output stream. In
+    /// pattern mode, if the track or the pattern is not in the last snapshot, it does nothing
+    /// (06 §5.1).
+    pub fn play(&self, request: PlayRequest) -> Result<(), EngineError> {
+        match request {
+            // TODO(T-043): song mode.
+            PlayRequest::Song { .. } => not_implemented(),
+            PlayRequest::Pattern {
+                track_id,
+                pattern_id,
+            } => self.request(|reply| Message::PlayPattern {
+                track_id,
+                pattern_id,
+                reply,
+            }),
+        }
     }
 
     /// Stops the playback, the count-in or the recording.
-    // TODO(T-007)
-    pub fn stop(&self) {}
+    pub fn stop(&self) {
+        // If the engine has stopped, there is nothing to stop.
+        let _ = self.messages.send(Message::Stop);
+    }
 
     /// Moves the playback in song mode to `frame`.
     // TODO(T-046)
@@ -190,8 +213,13 @@ impl EngineHandle {
 
     /// Plays the sound of a row of a rhythm track once (06 §8.3). Without an output stream,
     /// or if the track does not exist or is not a rhythm track, it does nothing.
-    // TODO(T-007)
-    pub fn audition(&self, _track_id: &str, _row: usize) {}
+    pub fn audition(&self, track_id: &str, row: usize) {
+        // If the engine has stopped, there is nothing to play.
+        let _ = self.messages.send(Message::Audition {
+            track_id: track_id.to_string(),
+            row,
+        });
+    }
 
     /// Starts the count-in and then records and plays from `request.start_frame` (06 §14.4).
     // TODO(T-083)
@@ -279,9 +307,28 @@ fn not_implemented<T>() -> Result<T, EngineError> {
     Err(EngineError::EngineInternal(NOT_IMPLEMENTED.to_string()))
 }
 
+fn no_output_device() -> EngineError {
+    EngineError::NoOutputDevice("there is no output stream".to_string())
+}
+
+/// Where the control thread sends the result of a message.
+type Reply = Sender<Result<(), EngineError>>;
+
 /// A message from an `EngineHandle` (or from the `Engine`) to the control thread.
 enum Message {
-    TestTone(Sender<Result<(), EngineError>>),
+    /// A snapshot that is already valid.
+    SetProject(EngineSnapshot, Reply),
+    PlayPattern {
+        track_id: String,
+        pattern_id: String,
+        reply: Reply,
+    },
+    Stop,
+    Audition {
+        track_id: String,
+        row: usize,
+    },
+    TestTone(Reply),
     Shutdown,
 }
 
@@ -296,19 +343,29 @@ struct Output {
 struct Control {
     shared: Arc<SharedState>,
     events: Arc<Mutex<Vec<EngineEvent>>>,
+    track_slots: TrackSlots,
     output: Option<Output>,
+    /// The slots of the tracks and the last snapshot (06 §5.3, §5.4).
+    preparer: Preparer,
+    /// The prepared snapshots sent to the output thread. The control thread keeps a reference
+    /// to each one, so that the output thread never frees one (RT-02), and drops those that
+    /// only it still holds.
+    // TODO(T-033): the trash queue (06 §5.6) takes the place of this list.
+    sent_projects: Vec<Arc<EngineProject>>,
 }
 
 impl Control {
     /// Creates a `Processor` with its command queue and opens the output stream for it
     /// (06 §13.1, §13.2).
     fn start(
+        kits: Arc<Kits>,
         shared: Arc<SharedState>,
         events: Arc<Mutex<Vec<EngineEvent>>>,
+        track_slots: TrackSlots,
         open_output: OpenOutput,
     ) -> Self {
         let (commands, consumer) = command_queue();
-        let processor = Processor::new(consumer, Arc::clone(&shared));
+        let processor = Processor::new(consumer, Arc::clone(&shared), kits);
         let opened = {
             let shared = Arc::clone(&shared);
             panic::catch_unwind(AssertUnwindSafe(|| open_output(processor, shared)))
@@ -321,7 +378,10 @@ impl Control {
         Self {
             shared,
             events,
+            track_slots,
             output,
+            preparer: Preparer::new(),
+            sent_projects: Vec::new(),
         }
     }
 
@@ -343,21 +403,60 @@ impl Control {
             if turn.is_err() {
                 self.internal_error("panic in the control thread");
             }
-            // TODO(T-033): empty the trash queue (06 §5.6).
+            self.sent_projects
+                .retain(|project| Arc::strong_count(project) > 1);
         }
     }
 
     fn handle(&mut self, message: Message) {
+        // The caller of a message with a reply may have gone; then no one waits for it.
         match message {
+            Message::SetProject(snapshot, reply) => {
+                let project = Arc::new(self.preparer.prepare(snapshot));
+                *self
+                    .track_slots
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner) = self.preparer.track_slots();
+                if self.send(RtCommand::SetProject(Arc::clone(&project))) {
+                    self.sent_projects.push(project);
+                }
+                let _ = reply.send(Ok(()));
+            }
+            Message::PlayPattern {
+                track_id,
+                pattern_id,
+                reply,
+            } => {
+                let result = if self.output.is_some() {
+                    if let Some((slot, pattern_index)) =
+                        self.preparer.pattern(&track_id, &pattern_id)
+                    {
+                        self.send(RtCommand::Play(PlayMode::Pattern {
+                            slot,
+                            pattern_index,
+                        }));
+                    }
+                    Ok(())
+                } else {
+                    Err(no_output_device())
+                };
+                let _ = reply.send(result);
+            }
+            Message::Stop => {
+                self.send(RtCommand::Stop);
+            }
+            Message::Audition { track_id, row } => {
+                let slot = self.preparer.rhythm_slot(&track_id);
+                if let Some(slot) = slot.filter(|_| row < KIT_ROWS) {
+                    self.send(RtCommand::Audition { slot, row });
+                }
+            }
             Message::TestTone(reply) => {
                 let result = if self.send(RtCommand::TestTone) {
                     Ok(())
                 } else {
-                    Err(EngineError::NoOutputDevice(
-                        "there is no output stream".to_string(),
-                    ))
+                    Err(no_output_device())
                 };
-                // The caller may have gone; then no one waits for the reply.
                 let _ = reply.send(result);
             }
             Message::Shutdown => {}
@@ -464,7 +563,7 @@ mod tests {
     fn an_impossible_state_in_the_audio_thread_gives_one_internal_error() {
         let engine = Engine::start_with(
             EngineConfig {
-                kits_dir: PathBuf::new(),
+                kits_dir: PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../assets/kits"),
             },
             |_, _| None,
         )

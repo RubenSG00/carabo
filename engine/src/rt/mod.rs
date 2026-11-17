@@ -6,6 +6,10 @@ pub(crate) mod commands;
 pub(crate) mod master;
 pub(crate) mod metronome;
 pub(crate) mod processor;
+pub(crate) mod sampler;
+pub(crate) mod sequencer;
+pub(crate) mod strip;
+pub(crate) mod transport;
 
 /// Largest subblock, in frames (06 §19).
 pub const MAX_BLOCK: usize = 4_096;

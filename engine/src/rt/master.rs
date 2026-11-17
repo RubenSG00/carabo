@@ -1,5 +1,6 @@
 //! The master channel (06 §10.3).
 
+use crate::constants::MICROFADE_FRAMES;
 use crate::rt::metronome::TestTone;
 use crate::rt::MAX_BLOCK;
 
@@ -34,18 +35,26 @@ impl Master {
     /// same length as the cleared bus (06 §7, step 2.4):
     ///
     /// ```text
-    /// x = bus + test tone;   if |x| > 1: clipped += 1, x = sign(x) · 1.0
+    /// x = bus · stopRamp + test tone;   if |x| > 1: clipped += 1, x = sign(x) · 1.0
     /// ```
+    ///
+    /// `stop_fade` is, in `Stopping`, the frame of the fade where the subblock starts; the stop
+    /// ramp of frame `i` of the fade (0 to 239) is `1 − (i + 1)/240`, and 1 outside `Stopping`.
     // TODO(T-040): the master volume with its ramp, and the master meter (06 §10.3).
-    // TODO(T-007): the stop ramp of `Stopping` (06 §10.3).
     // TODO(T-085): the calibration signal, added like the test tone (06 §10.3, §15).
-    pub(crate) fn finish(&mut self, test_tone: &mut TestTone, out: &mut [f32]) {
+    pub(crate) fn finish(
+        &mut self,
+        test_tone: &mut TestTone,
+        stop_fade: Option<u64>,
+        out: &mut [f32],
+    ) {
         let (out_frames, _) = out.as_chunks_mut::<2>();
         let (bus_frames, _) = self.bus.as_chunks::<2>();
-        for (out_frame, bus_frame) in out_frames.iter_mut().zip(bus_frames) {
+        for (i, (out_frame, bus_frame)) in out_frames.iter_mut().zip(bus_frames).enumerate() {
+            let stop_ramp = stop_fade.map_or(1.0, |first| stop_ramp(first + i as u64));
             let tone = test_tone.next_sample();
             for (sample, sum) in out_frame.iter_mut().zip(bus_frame) {
-                *sample = clip(sum + tone, &mut self.clipped_samples);
+                *sample = clip(sum * stop_ramp + tone, &mut self.clipped_samples);
             }
         }
     }
@@ -54,6 +63,12 @@ impl Master {
     pub(crate) fn clipped_samples(&self) -> u64 {
         self.clipped_samples
     }
+}
+
+/// The stop ramp at frame `i` of the fade: `1 − (i + 1)/240`, and 0 from its end on.
+fn stop_ramp(i: u64) -> f32 {
+    let fade = MICROFADE_FRAMES as f32;
+    (1.0 - (i + 1) as f32 / fade).max(0.0)
 }
 
 /// Limits `x` to ±1,0, counting it in `clipped` if it goes beyond.
@@ -94,7 +109,7 @@ mod tests {
             for (i, sample) in bus.iter_mut().enumerate() {
                 *sample = two_tones(block * MAX_BLOCK + i / 2, i % 2);
             }
-            master.finish(&mut tone, &mut out);
+            master.finish(&mut tone, None, &mut out);
 
             for (i, sample) in out.iter().enumerate() {
                 let x = two_tones(block * MAX_BLOCK + i / 2, i % 2);
@@ -117,7 +132,7 @@ mod tests {
         let values = [1.0, -1.0, 0.5, -0.999_999];
         master.clear(2).copy_from_slice(&values);
         let mut out = [0.0; 4];
-        master.finish(&mut TestTone::default(), &mut out);
+        master.finish(&mut TestTone::default(), None, &mut out);
         assert_eq!(out, values);
         assert_eq!(master.clipped_samples(), 0);
     }
@@ -134,9 +149,38 @@ mod tests {
         }
         master.clear(1).copy_from_slice(&[0.9, 0.0]);
         let mut out = [0.0; 2];
-        master.finish(&mut tone, &mut out);
+        master.finish(&mut tone, None, &mut out);
         assert_eq!(out[0], 1.0);
         assert!((out[1] - 0.25).abs() < 0.001, "{}", out[1]);
         assert_eq!(master.clipped_samples(), 1);
+    }
+
+    #[test]
+    fn the_stop_ramp_multiplies_the_bus_but_not_the_test_tone() {
+        let mut master = Master::new();
+        master
+            .clear(4)
+            .copy_from_slice(&[0.5, -0.5, 0.5, -0.5, 0.5, -0.5, 0.5, -0.5]);
+        let mut out = [0.0; 8];
+        // Frames 0, 1, 2 and 3 of the fade, then the last one.
+        master.finish(&mut TestTone::default(), Some(0), &mut out);
+        for (i, frame) in out.chunks(2).enumerate() {
+            let ramp = 1.0 - (i + 1) as f32 / 240.0;
+            assert_eq!(frame, [0.5 * ramp, -0.5 * ramp], "frame {i}");
+        }
+        master.clear(1).copy_from_slice(&[0.5, 0.5]);
+        let mut out = [1.0; 2];
+        master.finish(&mut TestTone::default(), Some(239), &mut out);
+        assert_eq!(out, [0.0, 0.0]);
+
+        let mut tone = TestTone::default();
+        tone.start();
+        for _ in 0..1_227 {
+            tone.next_sample();
+        }
+        master.clear(1).copy_from_slice(&[0.5, 0.0]);
+        let mut out = [0.0; 2];
+        master.finish(&mut tone, Some(239), &mut out);
+        assert!((out[0] - 0.25).abs() < 0.001 && out[0] == out[1], "{out:?}");
     }
 }
