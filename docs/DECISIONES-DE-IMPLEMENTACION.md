@@ -136,3 +136,46 @@ tarea (`docs/spec/00-indice.md` §6). Cada entrada se añade al final con esta p
   Una muestra de 16 bits `v` se lee como `v / 32768`.
 - **Por qué:** los códigos de error siguen la conversión de E/S de 07 §6.2. `v / 32768` deja todas las muestras de 16 bits dentro de [−1, 1). Es lo más simple (00 §6, paso 2), y el programa nativo solo escribe ese error en el registro (07 §6.1).
 - **Archivos afectados:** `engine/src/kits.rs`, `engine/src/error.rs`.
+
+## DI-17 · 2026-11-17 · T-006
+- **Hueco o contradicción:** T-006 (09 §4) no incluye `engine/Cargo.toml` entre sus archivos, pero el flujo de salida y la cola de órdenes necesitan `cpal` y `rtrb`, que 07 §2.4 asigna al motor (06 §2, §5.2).
+- **Decisión tomada:** `engine/Cargo.toml` añade a `[dependencies]` `cpal = "0.18"`, sin características (no se activa `asio`), y `rtrb = "0.3"`. `Cargo.lock` fija `cpal` 0.18.2 y `rtrb` 0.3.6 (existe la 0.4.1, pero no se cambia de línea: 07 §2.1), más las dependencias de `cpal` para cada sistema. Las demás versiones no cambian.
+- **Por qué:** son los crates que 07 §2.4 nombra para estos usos. Es lo mínimo con lo que la tarea se puede hacer, como en DI-11 (00 §6, paso 2).
+- **Archivos afectados:** `engine/Cargo.toml`, `Cargo.lock`.
+
+## DI-18 · 2026-11-17 · T-006
+- **Hueco o contradicción:** T-006 pide el `RtCommand` completo (06 §5.2) y todas las firmas del `EngineHandle` (09 §1.3, regla 7). Pero `RtCommand::SetProject` lleva un `EngineProject` (06 §5.3), y `EngineHandle::audio_pool()` devuelve un `AudioPool` (06 §9.1). Esos dos tipos viven en `project.rs` y `audio_pool.rs`, que son archivos de T-007 y T-044.
+- **Decisión tomada:** se crean `engine/src/project.rs` y `engine/src/audio_pool.rs` con dos estructuras vacías, `EngineProject {}` y `AudioPool {}`, marcadas con `TODO(T-007)` y `TODO(T-044)`. `audio_pool()` devuelve un `AudioPool` vacío. Mientras T-007 no adopte instantáneas, el `Processor` ignora `SetProject`. Nadie la envía todavía, porque `set_project` responde `not implemented`.
+- **Por qué:** es lo mínimo para que las firmas compilen sin implementar nada de otra tarea (09 §1.3, regla 5). Las tareas dueñas de esos archivos los completan.
+- **Archivos afectados:** `engine/src/project.rs`, `engine/src/audio_pool.rs`, `engine/src/rt/commands.rs`, `engine/src/rt/processor.rs`.
+
+## DI-19 · 2026-11-17 · T-006
+- **Hueco o contradicción:** 06 §12 pide para el tono de prueba «240 frames de fundido lineal al principio y al final», pero no da la ganancia de cada frame del fundido.
+- **Decisión tomada:** el frame `i` del tono (de 0 a 47 999) vale `0,25 · sin(2π · 440 · i / 48000) · g`. La ganancia es `g = min(1, i / 240, (47999 − i) / 240)`, calculada en `f32`. Es la misma forma que los microfundidos de 06 §9.2: el primer y el último frame valen 0, y la ganancia es 1 desde 240 frames de cada extremo. La fase se calcula en enteros (`440 · i mod 48000`) para que no pierda precisión a lo largo del tono.
+- **Por qué:** se reutiliza la regla de fundido que la especificación ya define, sin inventar otra (00 §6, paso 2). Además, el tono empieza y termina sin salto.
+- **Archivos afectados:** `engine/src/rt/metronome.rs`.
+
+## DI-20 · 2026-11-17 · T-006
+- **Hueco o contradicción:** T-006 pide la «API pública de 04 §5 completa en sus firmas (§1.3, regla 7)». La regla 7 habla del `EngineHandle`, pero 04 §5 incluye también las funciones `render_offline`, `import_audio` y `ensure_peaks`, con sus tipos. Esas funciones son de T-048 y T-070, que también editan `lib.rs`. Además, 06 §8.4 dice que `Engine::start` carga los kits, pero esa sección no está en el «Leer antes» de T-006 y el `Processor` todavía no los usa.
+- **Decisión tomada:**
+  - Existen `Engine`, `EngineConfig` y `EngineHandle` con todos sus métodos, junto con los tipos de sus firmas: `PlayRequest`, `RecordRequest`, `RecordStarted`, `DeviceList`, `ActiveDevices`, `Telemetry`, `EngineEvent` y `AudioPool`.
+  - Los métodos que devuelven `Result` y aún no tienen tarea hecha responden `ENGINE_INTERNAL` con el detalle `not implemented`. Los demás no hacen nada, y `devices()` devuelve listas vacías.
+  - `render_offline`, `import_audio` y `ensure_peaks`, con `RenderStats`, `AudioSink` e `ImportedAudio`, no se crean: los crean T-048 y T-070.
+  - `Engine::start` no carga los kits todavía. Queda marcado con `TODO(T-007)`, la tarea que lee 06 §8 y la primera que los usa.
+- **Por qué:** la regla 7 es la que define qué firmas deben existir desde T-006, y para el alcance de cada tarea manda 09 (00 §5). No se escribe código que nadie usa (07 §8.1).
+- **Archivos afectados:** `engine/src/engine.rs`, `engine/src/lib.rs`.
+
+## DI-21 · 2026-11-17 · T-006
+- **Hueco o contradicción:** 04 §5 dice que los tipos de Rust tienen los campos de sus equivalentes de TypeScript (04 §6), pero algunos de esos equivalentes no tienen nombre: el estado y el modo de `Telemetry` son uniones de textos, y cada elemento de `DeviceList` es un objeto anónimo.
+- **Decisión tomada:** en Rust se llaman `TelemetryState` (`Stopped`, `CountIn`, `Playing`, `Recording`), `TelemetryMode` (`Song`, `Pattern`) y `DeviceInfo` (`name`, `is_default`). Se serializan en JSON con los textos y las claves de 04 §6.1 y §6.4 (`"countIn"`, `"isDefault"`…). `trackPeaks` es un `BTreeMap`, para que el orden de las claves sea siempre el mismo.
+- **Por qué:** son nombres descriptivos que no chocan con los del glosario (`PlayMode` ya es la orden del hilo de salida, 06 §5.2), y lo que cruza el puente es idéntico a 04 §6 (00 §6, paso 2).
+- **Archivos afectados:** `engine/src/telemetry.rs`, `engine/src/io/devices.rs`.
+
+## DI-22 · 2026-11-17 · T-006
+- **Hueco o contradicción:** el criterio 4 de T-006 pide comprobar que `Engine::start` no falla sin dispositivo de salida, pero en una máquina con tarjeta de sonido esa prueba no sería determinista (08 §1, principio 4). Por otro lado, 04 §5 dice que `Engine` «posee los hilos», sin decir qué pasa al destruirlo, y 06 §13.1 no dice qué hacer si abrir la salida provoca un pánico.
+- **Decisión tomada:**
+  - **Arranque sin salida en las pruebas.** `Engine::start` usa por dentro el mismo camino que `testing::start_engine_without_output`, que solo cambia la función que abre la salida por una que responde «no hay salida». Con ella se prueba el criterio 4 en cualquier máquina. `testing::engine_clock` permite a la prueba `device_` comprobar que el hilo de salida calcula.
+  - **Destrucción del motor.** Al destruir el `Engine`, el hilo de control termina y cierra el flujo de salida. Las llamadas que se hagan después desde un `EngineHandle` y que necesitan respuesta devuelven `ENGINE_INTERNAL`.
+  - **Pánico al abrir la salida.** Si abrir la salida provoca un pánico, se trata como si no hubiera salida.
+- **Por qué:** el módulo `testing` existe para manejar el motor sin dispositivo (06 §2), y no se añade ninguna opción a `EngineConfig` (PD-06). Un pánico nunca cierra el programa (06 §20, RNF-12).
+- **Archivos afectados:** `engine/src/engine.rs`, `engine/src/lib.rs`, `engine/tests/skeleton.rs`.
