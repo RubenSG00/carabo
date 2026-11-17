@@ -1,0 +1,5 @@
+/* TODO(T-025): the measures and colours of 03 §3 and §6, from theme.css (T-021). */
+.TransportBar {
+  display: flex;
+  align-items: center;
+}

@@ -1,0 +1,10 @@
+/* TODO(T-030): the layout and measures of 03 §8.1, from theme.css (T-021). */
+.RhythmTab {
+  display: flex;
+  flex-direction: column;
+}
+
+.RhythmTab-toolbar {
+  display: flex;
+  align-items: center;
+}

@@ -1,0 +1,13 @@
+{
+  "a11y.step": "{sound}, paso {n}",
+  "history.createRhythmTrack": "crear pista de ritmo",
+  "history.toggleStep": "cambiar golpe",
+  "names.pattern": "Patrón {n}",
+  "names.rhythmTrack": "Ritmo {n}",
+  "rhythm.newTrack.label": "Nueva pista de ritmo",
+  "tab.mix.label": "Mezcla",
+  "tab.rhythm.label": "Ritmo",
+  "tab.song.label": "Canción",
+  "transport.play.label": "Reproducir",
+  "transport.stop.label": "Parar"
+}

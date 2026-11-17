@@ -1,0 +1,13 @@
+{
+  "a11y.step": "{sound}, step {n}",
+  "history.createRhythmTrack": "create rhythm track",
+  "history.toggleStep": "change hit",
+  "names.pattern": "Pattern {n}",
+  "names.rhythmTrack": "Rhythm {n}",
+  "rhythm.newTrack.label": "New rhythm track",
+  "tab.mix.label": "Mix",
+  "tab.rhythm.label": "Rhythm",
+  "tab.song.label": "Song",
+  "transport.play.label": "Play",
+  "transport.stop.label": "Stop"
+}

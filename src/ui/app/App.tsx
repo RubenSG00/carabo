@@ -1,9 +1,24 @@
+// The window (03 §3, RF-002): from top to bottom, the top bar, the transport bar and the area of
+// the active tab, which takes the rest of the space.
+// TODO(T-025): the status bar.
+import "../../store/engineSync";
+import { useUiStore } from "../../store/uiStore";
+import { RhythmTab } from "../rhythm/RhythmTab";
+import { TAB_PANEL_ID, TopBar, tabId } from "./TopBar";
+import { TransportBar } from "./TransportBar";
+import "./App.css";
+
 export function App() {
-  // TODO(T-010): replace this placeholder with the tabs and the transport.
-  // TODO(T-020): take the visible name from the translation files.
+  const tab = useUiStore((s) => s.tab);
+
   return (
-    <main>
-      <h1>Carabo</h1>
-    </main>
+    <div className="App">
+      <TopBar />
+      <TransportBar />
+      <div className="App-tab" role="tabpanel" id={TAB_PANEL_ID} aria-labelledby={tabId(tab)}>
+        {/* TODO(T-060): the Song tab. TODO(T-090): the Mix tab. */}
+        {tab === "rhythm" && <RhythmTab />}
+      </div>
+    </div>
   );
 }
