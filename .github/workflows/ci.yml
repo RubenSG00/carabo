@@ -27,4 +27,5 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
       - run: cargo test -p carabo-engine --release -- --ignored perf_
-      # TODO(T-003): add `npm run licenses` and `npm run traceability` once their scripts exist.
+      - run: npm run licenses
+      - run: npm run traceability
