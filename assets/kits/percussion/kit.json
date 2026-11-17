@@ -1,0 +1,14 @@
+{
+  "id": "percussion",
+  "name": { "es": "Percusión", "en": "Percussion" },
+  "sounds": [
+    { "role": "low",       "file": "low.wav",        "name": { "es": "Cajón grave", "en": "Cajón low" },         "chokeGroup": null },
+    { "role": "snare",     "file": "snare.wav",      "name": { "es": "Cajón agudo", "en": "Cajón high" },        "chokeGroup": null },
+    { "role": "clap",      "file": "clap.wav",       "name": { "es": "Palmas", "en": "Handclaps" },              "chokeGroup": null },
+    { "role": "hatClosed", "file": "hat-closed.wav", "name": { "es": "Shaker", "en": "Shaker" },                 "chokeGroup": null },
+    { "role": "hatOpen",   "file": "hat-open.wav",   "name": { "es": "Pandereta", "en": "Tambourine" },          "chokeGroup": null },
+    { "role": "tom",       "file": "tom.wav",        "name": { "es": "Bongó", "en": "Bongo" },                   "chokeGroup": null },
+    { "role": "accent",    "file": "accent.wav",     "name": { "es": "Campana", "en": "Bell" },                  "chokeGroup": null },
+    { "role": "extra",     "file": "extra.wav",      "name": { "es": "Claves", "en": "Claves" },                 "chokeGroup": null }
+  ]
+}

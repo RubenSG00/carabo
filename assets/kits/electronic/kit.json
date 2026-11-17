@@ -1,0 +1,14 @@
+{
+  "id": "electronic",
+  "name": { "es": "Batería electrónica", "en": "Electronic drums" },
+  "sounds": [
+    { "role": "low",       "file": "low.wav",        "name": { "es": "Bombo", "en": "Kick" },                    "chokeGroup": null },
+    { "role": "snare",     "file": "snare.wav",      "name": { "es": "Caja", "en": "Snare" },                    "chokeGroup": null },
+    { "role": "clap",      "file": "clap.wav",       "name": { "es": "Palmada", "en": "Clap" },                  "chokeGroup": null },
+    { "role": "hatClosed", "file": "hat-closed.wav", "name": { "es": "Charles cerrado", "en": "Closed hi-hat" }, "chokeGroup": "hat" },
+    { "role": "hatOpen",   "file": "hat-open.wav",   "name": { "es": "Charles abierto", "en": "Open hi-hat" },   "chokeGroup": "hat" },
+    { "role": "tom",       "file": "tom.wav",        "name": { "es": "Tom", "en": "Tom" },                       "chokeGroup": null },
+    { "role": "accent",    "file": "accent.wav",     "name": { "es": "Platillo", "en": "Cymbal" },               "chokeGroup": null },
+    { "role": "extra",     "file": "extra.wav",      "name": { "es": "Cencerro", "en": "Cowbell" },              "chokeGroup": null }
+  ]
+}

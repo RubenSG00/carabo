@@ -72,3 +72,67 @@ tarea (`docs/spec/00-indice.md` §6). Cada entrada se añade al final con esta p
 - **Decisión tomada:** `args` es una lista en el orden de los parámetros: `[entrada, tempoBpm]` para `tickToFrame`, `frameToTick` y `stepToFrame`; `[compás, "4/4"]` para `barToTick` y `barToStep`; `[tempoBpm]` para `maxSongTick`. El máximo es `maxSongTick(tempo)` para ticks, `MAX_SONG_FRAMES` para frames, `floor(maxSongTick(tempo) / TICKS_PER_STEP)` para pasos y, para compases, el número de compases enteros que caben a 240 negras por minuto, el tempo con el que más caben (600 en 4/4 y 800 en 3/4 y 6/8). Los resultados se calcularon con aritmética entera exacta a partir de las fórmulas de 05 §2.2, sin usar `time.ts` ni `time.rs` (08 §1, principio 5).
 - **Por qué:** es la forma más simple que cubre lo que pide 08 §7 y la misma para los dos lenguajes (00 §6, paso 2).
 - **Archivos afectados:** `fixtures/formulas/time.json`.
+
+## DI-11 · 2026-11-17 · T-005
+- **Hueco o contradicción:** T-005 (09 §4) no incluye `engine/Cargo.toml` ni `engine/src/constants.rs` entre sus archivos, pero la instantánea y la carga de kits necesitan `serde`, `serde_json`, `thiserror` y `hound` (07 §2.4), y la validación de 06 §5.5 necesita `EQ_GAIN_MIN_DB` y `EQ_GAIN_MAX_DB`, que no estaban en `constants.rs` (DI-7). Sin ellas, `snapshot.rs` repetiría los valores −12 y 12, cosa que prohíben 00 §4 y T-004.
+- **Decisión tomada:** `engine/Cargo.toml` tiene en `[dependencies]` `hound = "3.5"`, `serde` con `derive`, `serde_json` (que deja de estar solo en `[dev-dependencies]`, como preveía DI-6) y `thiserror = "2"`, y en `[dev-dependencies]` `tempfile = "3"`. `Cargo.lock` cambia solo en esas dependencias: `hound` 3.5.1, `tempfile` 3.27.0 y `thiserror` 2.0.21. `constants.rs` añade `EQ_GAIN_MIN_DB` y `EQ_GAIN_MAX_DB`, y su prueba las compara con `fixtures/constants.json`, tal como dice DI-7.
+- **Por qué:** son las dependencias que 07 §2.4 asigna al motor para estos usos, y DI-7 pide añadir así una constante que el motor necesita. Es lo mínimo con lo que la tarea se puede hacer (00 §6, paso 2).
+- **Archivos afectados:** `engine/Cargo.toml`, `Cargo.lock`, `engine/src/constants.rs`.
+
+## DI-12 · 2026-11-17 · T-005
+- **Hueco o contradicción:** 06 §2 dice que solo `files/` usa `hound` y que `files/wav.rs` lee los WAV. Pero según 06 §8.4 y T-005, `kits.rs` carga los WAV de los kits, y `files/wav.rs` es un archivo de T-044 (09 §8).
+- **Decisión tomada:** `engine/src/kits.rs` lee los WAV de los kits con `hound` directamente, en su función privada `read_sound`. No se crea `files/`.
+- **Por qué:** para el alcance de cada tarea manda 09 (00 §5): T-005 no crea archivos de T-044. Es la opción más simple y el autor la aprobó al revisar el plan de la tarea. `kits.rs` es la única excepción a la regla de 06 §2.
+- **Archivos afectados:** `engine/src/kits.rs`.
+
+## DI-13 · 2026-11-17 · T-005
+- **Hueco o contradicción:** 06 §5.5 pide rechazar con `INVALID_SNAPSHOT` valores que los tipos de Rust más naturales ni siquiera admitirían: un tempo no entero, un `timeSignature` desconocido o un `phaseFrames` negativo. Con esos tipos, la instantánea fallaría al deserializarse y no llegaría a `set_project`. Además, 06 §5.5 exige `phaseFrames ≥ 0` y `regionStartFrame ≥ 0`, pero no dice nada de `startStep`, `startFrame` ni `phaseSteps`.
+- **Decisión tomada:** los tipos de `engine/src/snapshot.rs` conservan los tipos JSON de la interfaz:
+  - `f64` para `tempoBpm`, los dB, `pan`, `amount` y `size`;
+  - `i64` para versión, pasos, frames, niveles y canales;
+  - `String` para `timeSignature` y `kitId`.
+
+  Así, todo valor que la interfaz puede enviar se deserializa, y `EngineSnapshot::validate` comprueba cada condición de 06 §5.5. También rechaza un `startStep`, un `startFrame` o un `phaseSteps` negativos.
+- **Por qué:** una sola puerta de entrada, la validación, da siempre `INVALID_SNAPSHOT`, y el motor sigue con la instantánea anterior (06 §5.5). Las posiciones de la canción empiezan en 0 (00 §3.5, 05 §10.3), y aceptar una negativa obligaría al motor a manejar un caso que la interfaz nunca produce (00 §6, paso 2).
+- **Archivos afectados:** `engine/src/snapshot.rs`.
+
+## DI-14 · 2026-11-17 · T-005
+- **Hueco o contradicción:** 06 §5.5 exige que `kitId` sea «uno de los kits cargados», pero `render_offline` valida la instantánea antes de cargar los kits (06 §16.1, pasos 1 y 2).
+- **Decisión tomada:** la validación comprueba que `kitId` es uno de los tres identificadores de `KIT_IDS` (`acoustic`, `electronic` y `percussion`), sin consultar los kits cargados.
+- **Por qué:** los kits cargados son siempre esos tres, porque `Engine::start` falla si falta alguno (06 §8.4). Con esta regla, la misma validación sirve a `set_project` y a `render_offline` sin depender de los kits (00 §6, paso 2).
+- **Archivos afectados:** `engine/src/snapshot.rs`, `engine/src/kits.rs`.
+
+## DI-15 · 2026-11-17 · T-005
+- **Hueco o contradicción:** las recetas de 05 §8.4 dejan sin fijar varios detalles de los sonidos sustitutos:
+  - qué valor es «el anterior» del primer frame en el ruido agudo;
+  - la fase de los senos y de los barridos;
+  - la forma de la onda cuadrada;
+  - cómo se combinan las ráfagas y la cola de las palmadas;
+  - cómo se aplica la «subida lineal» del shaker;
+  - el orden entre normalizar y fundir;
+  - la forma exacta del fundido;
+  - cómo se pasa a 16 bits.
+
+  Además, el script necesita `SAMPLE_RATE`, que no puede repetirse (00 §4).
+- **Decisión tomada:** `tools/gen-placeholder-kits.mjs`:
+  - **Ruido:** el generador empieza con `estado = semilla`, y el valor de la semilla es «el anterior» del primer frame. El ruido agudo del frame `i` es `valor(estado_(i+1)) − valor(estado_i)`.
+  - **Fase:** senos y barridos empiezan en fase 0. La fase del barrido es la integral exacta de su frecuencia: `2π · (fFin · t + (fInicio − fFin) · τf · (1 − e^(−t/τf)))`.
+  - **Onda cuadrada:** vale +1 en la primera mitad de cada periodo y −1 en la segunda (`(f · i) mod 48000 < 24000`).
+  - **Palmadas:** las tres ráfagas y la cola empiezan con amplitud 1 y se suman.
+  - **Shaker:** la subida lineal de 10 ms multiplica a la envolvente `e^(−t/τa)`.
+  - **Orden:** se aplica primero el fundido de salida, `min(1, (N − 1 − i) / 240)`, de modo que el último frame vale 0, y después se normaliza el pico a 0,8.
+  - **16 bits:** cada muestra se escribe como `round(x · 32767)`, igual que 06 §16.2 hace con 24 bits.
+  - **Constantes:** el script importa `SAMPLE_RATE` de `src/core/constants.ts`. Node 24 ejecuta TypeScript eliminando los tipos.
+- **Por qué:** en cada punto es la lectura más directa del texto de la receta. Normalizar al final garantiza que el pico sea exactamente 0,8, y la escala a 16 bits sigue la misma regla que la exportación (00 §6, paso 2). La prueba de 08 §10 fija el resultado byte a byte.
+- **Archivos afectados:** `tools/gen-placeholder-kits.mjs`, `assets/kits/*/*.wav`.
+
+## DI-16 · 2026-11-17 · T-005
+- **Hueco o contradicción:** 06 §8.4 dice que la carga de kits «devuelve error», pero no con qué código de 04 §6.3. Tampoco dice cómo se convierte a `f32` una muestra de 16 bits.
+- **Decisión tomada:** `load_kits` devuelve:
+  - `NOT_FOUND` si falta un kit o un archivo de sonido;
+  - `IO` ante cualquier otro error de lectura;
+  - `UNSUPPORTED_FORMAT` si `kit.json` no es un kit con 8 sonidos en el orden de funciones de 05 §8.1, o si un WAV no es mono a 48 000 Hz en 16 bits o en coma flotante de 32 bits, o dura más de 4 s.
+
+  Una muestra de 16 bits `v` se lee como `v / 32768`.
+- **Por qué:** los códigos de error siguen la conversión de E/S de 07 §6.2. `v / 32768` deja todas las muestras de 16 bits dentro de [−1, 1). Es lo más simple (00 §6, paso 2), y el programa nativo solo escribe ese error en el registro (07 §6.1).
+- **Archivos afectados:** `engine/src/kits.rs`, `engine/src/error.rs`.
