@@ -1,0 +1,12 @@
+{
+  "state": "playing",
+  "mode": "pattern",
+  "positionFrame": 12000,
+  "patternStep": 1,
+  "trackPeaks": { "track-1": [0.5, 0.25] },
+  "masterPeak": [0.5, 0.25],
+  "inputPeak": null,
+  "xruns": 0,
+  "recordedFrames": null,
+  "outputAvailable": true
+}

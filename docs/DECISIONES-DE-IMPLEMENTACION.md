@@ -205,3 +205,88 @@ tarea (`docs/spec/00-indice.md` §6). Cada entrada se añade al final con esta p
   - la prueba `handle_methods_of_later_tasks_are_not_implemented_yet` deja de comprobar `set_project`, `stop` y `audition`, que ahora prueba `engine/tests/rhythm.rs`.
 - **Por qué:** sin estos cambios la tarea no compila o no cumple su criterio 4. 09 §1.4 pide corregir una prueba existente que falla porque el cambio es correcto según la especificación.
 - **Archivos afectados:** `engine/src/rt/master.rs`, `engine/src/rt/mod.rs`, `engine/src/lib.rs`, `engine/tests/skeleton.rs`.
+
+## DI-26 · 2026-11-17 · T-008
+- **Hueco o contradicción:** el hilo de telemetría necesita `TELEMETRY_HZ` en Rust (07 §6.3). Según 07 §7 y DI-7, la tarea que necesita una constante en Rust la añade a `engine/src/constants.rs` y a su prueba. Pero T-008 (09 §4) dice «No tocar: `engine/`».
+- **Decisión tomada:** `engine/src/constants.rs` añade `TELEMETRY_HZ = 30`, y su prueba la compara con `fixtures/constants.json`. Es el único cambio en `engine/`. `src-tauri/src/telemetry.rs` la importa de `carabo_engine::constants`. El autor eligió esta opción al revisar el plan de la tarea.
+- **Por qué:** para rutas y convenciones de código, 07 manda sobre 09 (00 §5). Además, 00 §4 exige que cada constante se defina una sola vez por lenguaje, en su archivo de constantes.
+- **Archivos afectados:** `engine/src/constants.rs`, `src-tauri/src/telemetry.rs`.
+
+## DI-27 · 2026-11-17 · T-008
+- **Hueco o contradicción:** `bridge.ts` debe contener los tipos de 04 §6, que usan `EngineSnapshot` (05 §10.1) y `Session` (05 §7.2). Pero:
+  - `EngineSnapshot` va en `core/model.ts`, que crea T-009, y T-009 no puede tocar `src/bridge/`;
+  - `Session` no está en `model.ts`, que solo recoge los tipos de 05 §3 y §10 (04 §3.1).
+- **Decisión tomada:**
+  - Se crea `src/core/model.ts` con un `EngineSnapshot` provisional (`Readonly<Record<string, unknown>>`), marcado con `TODO(T-009)`, y `bridge.ts` lo importa de ahí. T-009 lo sustituye por el tipo completo sin tocar `src/bridge/`. Las pruebas de `src/bridge/` usan instantáneas con la forma de 05 §10.1, para que sigan compilando con el tipo completo.
+  - `Session` se copia literalmente de 05 §7.2 en `bridge.ts`, porque es el tipo de un argumento y de un resultado del puente (04 §3.3).
+- **Por qué:** es lo mínimo que no implementa nada de T-009 (09 §1.3, regla 5) y respeta su «No tocar».
+- **Archivos afectados:** `src/core/model.ts`, `src/bridge/bridge.ts`.
+
+## DI-28 · 2026-11-17 · T-008
+- **Hueco o contradicción:** la lista de archivos de T-008 (09 §4) no incluye `src-tauri/Cargo.toml` ni algunas pruebas que sus criterios exigen:
+  - `bridge.contract.test.ts` (criterio 7, 08 §7);
+  - `mockBridge.test.ts` (criterio 8, 08 §5.2);
+  - las de `index.ts`, `tauriBridge.ts` y `engineStore.ts` (08 §14, punto 2).
+- **Decisión tomada:**
+  - `src-tauri/Cargo.toml` añade las dependencias de 07 §2.4 que la tarea usa: `carabo-engine` (ruta `../engine`), `serde` con `derive`, `serde_json`, `sys-locale` 0.3 y, solo en pruebas, `tempfile` 3. `Cargo.lock` solo cambia en `sys-locale` 0.3.2 y en las dependencias de `carabo`.
+  - `uuid` no se añade: lo usará `project_create_temp` (T-050).
+  - Se crean `src/bridge/{bridge.contract,mockBridge,index,tauriBridge}.test.ts` y `src/store/engineStore.test.ts`, limitados a lo de esta tarea. T-023 completa los dos primeros.
+- **Por qué:** sin estos archivos la tarea no compila ni puede cumplir sus criterios, como en DI-11 y DI-17 (00 §6, paso 2).
+- **Archivos afectados:** `src-tauri/Cargo.toml`, `Cargo.lock`, `src/bridge/*.test.ts`, `src/store/engineStore.test.ts`.
+
+## DI-29 · 2026-11-17 · T-008
+- **Hueco o contradicción:** 04 §6.1 dice que el puente rechaza siempre con un `BridgeError`. Pero Tauri rechaza por su cuenta, con un texto, cuando no puede leer los argumentos de un comando. Si `engine_set_project` recibiera la instantánea ya tipada, una instantánea sin la forma de 05 §10.1 daría ese error de Tauri en lugar de `INVALID_SNAPSHOT`, el único error de ese comando (04 §6.2).
+- **Decisión tomada:**
+  - `tauriBridge` deja pasar tal cual los rechazos que ya son un `BridgeError` (un `code` de 04 §6.3 y un `detail` de texto). Cualquier otro rechazo se convierte en `{ code: "ENGINE_INTERNAL", detail }`, donde `detail` es el texto del rechazo, o su JSON si no es un texto.
+  - `engine_set_project` recibe la instantánea como JSON sin tipar y la convierte en `EngineSnapshot`. Si no encaja, responde `INVALID_SNAPSHOT` con el mensaje de `serde_json`.
+- **Por qué:** así se cumple 04 §6.1 y la tabla de errores de 04 §6.2. `ENGINE_INTERNAL` es el código de «cualquier otra cosa» (04 §6.5 lo muestra con E-150). Es lo más simple (00 §6, paso 2).
+- **Archivos afectados:** `src/bridge/tauriBridge.ts`, `src-tauri/src/commands/engine.rs`.
+
+## DI-30 · 2026-11-17 · T-008
+- **Hueco o contradicción:** 05 §7.3 fija el formato de una línea del registro (`<fecha y hora ISO 8601 UTC> <NIVEL> <módulo> <mensaje>`), pero no dice:
+  - qué módulo llevan las líneas de `logWrite`;
+  - con qué precisión se escribe la hora;
+  - qué pasa con un mensaje que tiene saltos de línea;
+  - qué hacer si el archivo no se puede abrir.
+
+  Tampoco dice con qué nivel se anotan los eventos del motor que aún no se emiten (T-008, criterio 3).
+- **Decisión tomada:**
+  - **Módulo:** `ui` para lo que llega de la interfaz por `log_write`, `app` para el arranque y `telemetry` para el hilo de telemetría.
+  - **Hora:** en segundos, `2026-11-17T09:05:03Z`, calculada sin bibliotecas (07 §2.5).
+  - **Saltos de línea:** los del mensaje se sustituyen por espacios, para que cada entrada sea una sola línea.
+  - **Archivo que no se abre:** el programa sigue sin registro.
+  - **Eventos del motor:** cada uno se anota con nivel `WARN` y su contenido.
+- **Por qué:** es lo más simple que cumple 05 §7.3 y RNF-20 (00 §6, paso 2). Un registro que falla no debe impedir usar el programa (PD-10).
+- **Archivos afectados:** `src-tauri/src/logging.rs`, `src-tauri/src/telemetry.rs`, `src-tauri/src/commands/system.rs`, `src-tauri/src/lib.rs`.
+
+## DI-31 · 2026-11-17 · T-008
+- **Hueco o contradicción:** quedan sin fijar tres detalles:
+  - qué `systemLocale` devuelve `app_info` si Windows no informa de su idioma (04 §6.2);
+  - qué devuelve `appInfo` en el puente simulado;
+  - cuándo emite `mockBridge.onTelemetry` su telemetría en estado parado (T-008, criterio 8).
+- **Decisión tomada:**
+  - **Idioma desconocido:** `systemLocale` es la cadena vacía. Según RF-701, eso da inglés, porque no empieza por `es`.
+  - **`appInfo` simulado:** devuelve `{ version: "0.0.0", systemLocale: "es-ES" }`.
+  - **Telemetría simulada:** `onTelemetry` la emite una sola vez, en una microtarea posterior a la suscripción, como un evento real, y no la emite si la suscripción se ha cancelado antes. T-023 añade el motor falso con su temporizador.
+- **Por qué:** son los valores más simples que no añaden casos especiales (00 §6, paso 2).
+- **Archivos afectados:** `src-tauri/src/commands/system.rs`, `src/bridge/mockBridge.ts`.
+
+## DI-32 · 2026-11-17 · T-008
+- **Hueco o contradicción:** 07 §6.1 pide que, si el motor no arranca, el programa termine con un cuadro nativo de error, pero no dice cómo mostrarlo. `setup` se ejecuta en el hilo principal, y la documentación de `tauri-plugin-dialog` 2.8.4 advierte que `blocking_show` congela el programa si se llama desde ahí. Además, 07 §6.1 pide registrar todos los comandos de 04 §6.2, pero la mayoría pertenece a tareas posteriores.
+- **Decisión tomada:**
+  - **Cuadro de error:** se escribe el error en el registro y se muestra el cuadro con `show`, que no bloquea. Lleva el texto de 07 §6.1, la ruta del registro y el título por defecto del complemento, que es el nombre del programa. Al cerrarlo, el programa termina con `exit(1)`.
+  - **Comandos:** `generate_handler!` registra solo los comandos que existen. Cada tarea posterior registra los suyos, y hasta entonces `tauriBridge` no los invoca (09 §1.3, regla 6).
+- **Por qué:** es la forma que la documentación de la versión instalada indica para el hilo principal (09 §1.4). No se implementa nada de otra tarea (09 §1.3, regla 5).
+- **Archivos afectados:** `src-tauri/src/lib.rs`.
+
+## DI-33 · 2026-11-17 · T-008
+- **Hueco o contradicción:**
+  - 07 §6.5 pide que `index.ts` exporte un `bridge` y cargue `tauriBridge.ts` con una importación dinámica, que es asíncrona.
+  - 04 §3.2 dice que solo el manejador de eventos del puente modifica `engineStore`, pero no dice quién lo suscribe. `main.tsx` no es de esta tarea, y `ui/` no puede importar `bridge/` (04 §9).
+  - 08 §7 pide comprobar con el compilador que cada archivo de `fixtures/bridge/` es de su tipo. Pero TypeScript lee un JSON importado con textos y arrays generales: `"stopped"` como `string` y `[0.5, 0.25]` como `number[]`. Por eso no se puede asignar directamente a `Telemetry`.
+- **Decisión tomada:**
+  - **`index.ts`:** usa `await` de nivel superior, que admite el objetivo `chrome110` de `vite.config.ts`. Así `bridge` ya es el puente definitivo al cargarse.
+  - **`engineStore.ts`:** se suscribe a `bridge.onTelemetry` al cargarse, con `listenToBridge`, que se exporta para probarla con una fuente falsa.
+  - **Prueba de contrato:** asigna cada archivo al tipo `AsJson<T>`, que convierte las uniones de textos en `string` y las tuplas en arrays. Así el compilador rechaza un valor de otro tipo o una clave que falta, y la prueba comprueba al ejecutarse que no sobra ninguna clave.
+- **Por qué:** es lo más simple que cumple 07 §6.5, 04 §3.2 y 08 §7 sin tocar archivos de otras tareas (00 §6, paso 2).
+- **Archivos afectados:** `src/bridge/index.ts`, `src/store/engineStore.ts`, `src/bridge/bridge.contract.test.ts`.
