@@ -24,3 +24,15 @@ tarea (`docs/spec/00-indice.md` §6). Cada entrada se añade al final con esta p
 - **Decisión tomada:** `LICENSE` usa el nombre del autor del primer commit del repositorio (`RubenSG00`), que es el `user.name` de la máquina del autor (09 §1.1).
 - **Por qué:** la licencia pertenece al autor del producto (DEC-24, DEC-25), no al agente.
 - **Archivos afectados:** `LICENSE`.
+
+## DI-3 · 2026-11-16 · T-002
+- **Hueco o contradicción:** 07 §2.2 pide anotar la versión estable de Rust instalada con `rustup update stable` y fijarla en `rust-toolchain.toml`.
+- **Decisión tomada:** `rust-toolchain.toml` fija `channel = "1.100.0"`, la versión que da `rustc --version` tras `rustup update stable` el 2026-11-16 (cumple «1.99 o posterior»).
+- **Por qué:** 07 §2.2 y §5.5; T-002, criterio 2.
+- **Archivos afectados:** `rust-toolchain.toml`.
+
+## DI-4 · 2026-11-16 · T-002
+- **Hueco o contradicción:** 07 §5.5 no dice qué versión llevan los paquetes `carabo` y `carabo-engine` en sus `Cargo.toml`, y 07 §5.1 dice que el campo `version` de `package.json` es la única fuente de la versión del programa.
+- **Decisión tomada:** los dos `Cargo.toml` no declaran `version` (Cargo usa `0.0.0`). La versión del programa la toma Tauri de `package.json` a través de `"version": "../package.json"` en `tauri.conf.json`.
+- **Por qué:** una sola fuente de la versión (07 §5.1); es lo más simple y no añade un número que haya que mantener a mano (PD-06).
+- **Archivos afectados:** `engine/Cargo.toml`, `src-tauri/Cargo.toml`.

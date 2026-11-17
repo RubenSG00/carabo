@@ -1,0 +1,16 @@
+[workspace]
+members = ["engine", "src-tauri"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package.carabo-engine]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
