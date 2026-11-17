@@ -3,15 +3,12 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH } from "../src/core/constants.ts";
 
 const readJson = (path) => JSON.parse(readFileSync(new URL(path, import.meta.url), "utf8"));
 
 const conf = readJson("../src-tauri/tauri.conf.json");
 const capabilities = readJson("../src-tauri/capabilities/default.json");
-
-// TODO(T-004): import WINDOW_MIN_WIDTH and WINDOW_MIN_HEIGHT from src/core/constants.ts.
-const WINDOW_MIN_WIDTH = 1280;
-const WINDOW_MIN_HEIGHT = 720;
 
 /** The permissions of 07 §5.7, and no others. */
 const ALLOWED_PERMISSIONS = [
