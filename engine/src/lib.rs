@@ -26,17 +26,19 @@ pub use telemetry::{EngineEvent, RecordEndReason, Telemetry, TelemetryMode, Tele
 pub mod testing {
     use std::sync::Arc;
 
-    pub use crate::project::EngineProject;
+    use crate::kits::Kits;
+    pub use crate::project::{EngineProject, Preparer};
     pub use crate::rt::commands::{CommandProducer, PlayMode, RtCommand};
     pub use crate::rt::processor::Processor;
     pub use crate::telemetry::SharedState;
     use crate::{Engine, EngineConfig, EngineError, EngineHandle};
 
-    /// A new `Processor` in `Stopped`, the end of its command queue and its atomic values.
-    pub fn processor() -> (Processor, CommandProducer, Arc<SharedState>) {
+    /// A new `Processor` in `Stopped` that plays `kits`, the end of its command queue and its
+    /// atomic values.
+    pub fn processor(kits: Arc<Kits>) -> (Processor, CommandProducer, Arc<SharedState>) {
         let (commands, consumer) = crate::rt::commands::command_queue();
         let shared = Arc::new(SharedState::new());
-        let processor = Processor::new(consumer, Arc::clone(&shared));
+        let processor = Processor::new(consumer, Arc::clone(&shared), kits);
         (processor, commands, shared)
     }
 

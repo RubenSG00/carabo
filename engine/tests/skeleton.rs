@@ -192,7 +192,6 @@ fn handle_methods_of_later_tasks_are_not_implemented_yet() {
             Err(EngineError::EngineInternal("not implemented".to_string()))
         );
     };
-    not_implemented(handle.set_project(snapshot().build()));
     not_implemented(handle.play(PlayRequest::Song { start_frame: 0 }));
     not_implemented(
         handle
@@ -208,11 +207,9 @@ fn handle_methods_of_later_tasks_are_not_implemented_yet() {
     not_implemented(handle.calibrate().map(|_| ()));
 
     // Those without a result do nothing.
-    handle.stop();
     handle.seek(48_000);
     handle.set_loop(true, 0, 96_000);
     handle.set_metronome(true);
-    handle.audition("t1", 0);
     handle.input_close();
     let devices = handle.devices();
     assert!(devices.outputs.is_empty() && devices.inputs.is_empty());

@@ -179,3 +179,29 @@ tarea (`docs/spec/00-indice.md` §6). Cada entrada se añade al final con esta p
   - **Pánico al abrir la salida.** Si abrir la salida provoca un pánico, se trata como si no hubiera salida.
 - **Por qué:** el módulo `testing` existe para manejar el motor sin dispositivo (06 §2), y no se añade ninguna opción a `EngineConfig` (PD-06). Un pánico nunca cierra el programa (06 §20, RNF-12).
 - **Archivos afectados:** `engine/src/engine.rs`, `engine/src/lib.rs`, `engine/tests/skeleton.rs`.
+
+## DI-23 · 2026-11-17 · T-007
+- **Hueco o contradicción:** según 06 §8.2, al disparar una voz el grupo de corte y el límite de voces actúan en el momento del disparo, pero la voz nueva empieza a sonar `delay` frames después, dentro del subbloque. Así, el charles abierto empezaría a apagarse al principio del subbloque y no en el frame del cerrado, y una voz que termina antes de ese frame seguiría contando como activa. El resultado dependería de cómo se parte el audio en bloques, cosa que prohíbe RT-10 (06 §4, 06 §16.4). Además, 08 §8.2 pide que el abierto caiga a 0 en 240 frames «al dispararse el charles cerrado».
+- **Decisión tomada:** el secuenciador calcula las voces de la ranura hasta el frame exacto de cada paso que cae en el subbloque, dispara allí sus golpes con retraso 0 y sigue. El corte, el límite de voces y el reaprovechamiento de voces se aplican en el frame del golpe, sea cual sea el tamaño de bloque. `Voice` no tiene el campo `delay`, porque siempre valdría 0. Las demás reglas de 06 §8.2 se aplican tal cual.
+- **Por qué:** RT-10 no admite excepciones (06 §4), y es la lectura de 08 §8.2. No añade sucesos a la tabla de subbloques de 06 §6.4 ni cambia ninguna fórmula (00 §6, paso 2).
+- **Archivos afectados:** `engine/src/rt/sequencer.rs`, `engine/src/rt/sampler.rs`.
+
+## DI-24 · 2026-11-17 · T-007
+- **Hueco o contradicción:** T-007 (09 §4) pide no implementar la cola de desechos más allá de lo necesario para compilar, porque es de T-033. Pero 06 §4 dice que las reglas del hilo de audio no admiten excepciones, y sin esa cola el hilo de salida liberaría la instantánea preparada anterior al adoptar una nueva (RT-02).
+- **Decisión tomada:** el hilo de control guarda una referencia a cada instantánea preparada que envía al hilo de salida. En cada vuelta suelta las que solo él sigue teniendo (`Arc::strong_count` igual a 1). Así, cuando el hilo de salida sustituye una instantánea, solo resta 1 a su cuenta y la memoria la libera el hilo de control. Queda marcado con `TODO(T-033)`: la cola de desechos de 06 §5.6 ocupará su lugar.
+- **Por qué:** es lo mínimo que cumple RT-02 sin construir la cola de desechos de T-033 (00 §6, paso 2).
+- **Archivos afectados:** `engine/src/engine.rs`, `engine/src/rt/processor.rs`.
+
+## DI-25 · 2026-11-17 · T-007
+- **Hueco o contradicción:** la lista de archivos de T-007 (09 §4) no incluye `engine/src/rt/master.rs`, `engine/src/rt/mod.rs`, `engine/src/lib.rs` ni `engine/tests/skeleton.rs`, pero la tarea los necesita:
+  - la rampa de parada de 06 §10.3 se aplica en el maestro, y T-006 la dejó marcada allí con `TODO(T-007)`;
+  - los módulos nuevos de `rt/` se declaran en `rt/mod.rs`;
+  - el módulo `testing` (08 §8.1) debe exponer la preparación de la instantánea;
+  - una prueba de T-006 esperaba `not implemented` de `set_project`, que esta tarea implementa.
+- **Decisión tomada:** se hacen los cambios mínimos:
+  - `Master::finish` recibe el frame del fundido de parada y multiplica la suma de pistas por `1 − (i + 1)/240`, sin tocar el tono de prueba;
+  - `rt/mod.rs` declara `sampler`, `sequencer`, `strip` y `transport`;
+  - `testing` exporta `Preparer`, y `testing::processor` recibe los kits;
+  - la prueba `handle_methods_of_later_tasks_are_not_implemented_yet` deja de comprobar `set_project`, `stop` y `audition`, que ahora prueba `engine/tests/rhythm.rs`.
+- **Por qué:** sin estos cambios la tarea no compila o no cumple su criterio 4. 09 §1.4 pide corregir una prueba existente que falla porque el cambio es correcto según la especificación.
+- **Archivos afectados:** `engine/src/rt/master.rs`, `engine/src/rt/mod.rs`, `engine/src/lib.rs`, `engine/tests/skeleton.rs`.
