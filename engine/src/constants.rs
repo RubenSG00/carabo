@@ -59,6 +59,8 @@ pub const LEVEL_GAINS: [f32; 4] = [0.0, 0.45, 0.75, 1.0];
 pub const MAX_VOICES: usize = 32;
 /// Tail added when exporting: 2 seconds.
 pub const EXPORT_TAIL_FRAMES: u64 = 96_000;
+/// How many times per second the native program reports the telemetry to the interface.
+pub const TELEMETRY_HZ: u32 = 30;
 
 #[cfg(test)]
 mod tests {
@@ -83,7 +85,7 @@ mod tests {
     #[test]
     fn numeric_constants_match_the_fixture() {
         let fixture = fixture();
-        let constants: [(&str, f64); 22] = [
+        let constants: [(&str, f64); 23] = [
             ("SAMPLE_RATE", f64::from(SAMPLE_RATE)),
             ("PPQ", PPQ as f64),
             ("TICKS_PER_STEP", TICKS_PER_STEP as f64),
@@ -106,6 +108,7 @@ mod tests {
             ("EQ_HIGH_HZ", EQ_HIGH_HZ),
             ("MAX_VOICES", MAX_VOICES as f64),
             ("EXPORT_TAIL_FRAMES", EXPORT_TAIL_FRAMES as f64),
+            ("TELEMETRY_HZ", f64::from(TELEMETRY_HZ)),
         ];
         for (name, value) in constants {
             assert_eq!(fixture_number(&fixture, name), value, "{name}");
