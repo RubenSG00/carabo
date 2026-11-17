@@ -290,3 +290,38 @@ tarea (`docs/spec/00-indice.md` §6). Cada entrada se añade al final con esta p
   - **Prueba de contrato:** asigna cada archivo al tipo `AsJson<T>`, que convierte las uniones de textos en `string` y las tuplas en arrays. Así el compilador rechaza un valor de otro tipo o una clave que falta, y la prueba comprueba al ejecutarse que no sobra ninguna clave.
 - **Por qué:** es lo más simple que cumple 07 §6.5, 04 §3.2 y 08 §7 sin tocar archivos de otras tareas (00 §6, paso 2).
 - **Archivos afectados:** `src/bridge/index.ts`, `src/store/engineStore.ts`, `src/bridge/bridge.contract.test.ts`.
+
+## DI-34 · 2026-11-17 · T-009
+- **Hueco o contradicción:** 04 §3.1 (regla 2) y 04 §10 piden que una función de `core/commands/` que no puede aplicar la operación devuelva el motivo (`"maxTracks"`, `"songLimit"`…) sin lanzar una excepción, pero no definen el tipo de ese resultado. Tampoco dicen qué motivo corresponde a unos argumentos que no designan nada, como una pista que no existe o un paso fuera del patrón, que la prueba de invariantes de 08 §4.2 usa a propósito.
+- **Decisión tomada:**
+  - `src/core/model.ts` define `Rejection = { rejected: RejectionReason }`. Así lo pueden usar todos los archivos de `core/commands/` sin que uno importe de otro.
+  - Por ahora `RejectionReason` es `"maxTracks" | "notFound"`. Cada tarea añade sus motivos.
+  - `createRhythmTrack` devuelve el `id` de la pista o `{ rejected: "maxTracks" }`.
+  - `toggleStep` devuelve `undefined`, o `{ rejected: "notFound" }` si la pista o el patrón no existen o si la fila o el paso no son índices enteros dentro del patrón.
+  - En los dos casos de rechazo el documento queda sin cambios.
+- **Por qué:** es el tipo más simple que distingue el éxito del rechazo con su motivo (04 §10). `model.ts` es el único archivo de tipos de `core/` que esta tarea puede tocar (09 §1.3). Un solo motivo para todo argumento que no existe evita casos que el usuario no puede provocar desde la interfaz (00 §6, paso 2).
+- **Archivos afectados:** `src/core/model.ts`, `src/core/commands/tracks.ts`, `src/core/commands/patterns.ts`.
+
+## DI-35 · 2026-11-17 · T-009
+- **Hueco o contradicción:** RF-201 llama a la pista nueva «Ritmo N», con el menor N que no repite un nombre, y 03 §14.2 dice que ese nombre se escribe en el idioma activo. Pero `core/` no conoce los idiomas (09, T-011: «lo da quien llama»), y para calcular N hay que probar varios nombres, así que no basta con recibir un texto ya traducido.
+- **Decisión tomada:** `createRhythmTrack(doc, trackName, patternName)` recibe dos funciones `(n: number) => string` (tipo `DefaultName`) que escriben el nombre por defecto de un número. Quien llama las construye con las claves `names.rhythmTrack` y `names.pattern`. La orden busca el menor `n` cuyo `trackName(n)` no coincide con el nombre de ninguna pista y llama al patrón `patternName(1)`, porque la pista nueva no tiene otros patrones.
+- **Por qué:** `core/` sigue sin depender de `i18n/` (04 §9) y la regla de RF-201 se aplica en un solo sitio (00 §6, paso 2).
+- **Archivos afectados:** `src/core/commands/tracks.ts`.
+
+## DI-36 · 2026-11-17 · T-009
+- **Hueco o contradicción:** en 04 §3.2, `commit(label, receta)` no devuelve nada. Pero quien llama necesita el resultado de la operación: RF-201 deja seleccionada la pista nueva, cuyo `id` solo conoce la orden, y 04 §10 pide mostrar el aviso del motivo de un rechazo.
+- **Decisión tomada:** `commit` devuelve lo que devuelve la receta: el `id` creado, el `Rejection` o `undefined`. Para obtenerlo sin perder los parches, la receta se aplica con `createDraft` y `finishDraft` de Immer, que dan el mismo resultado que `produceWithPatches`. El algoritmo de 04 §3.2 no cambia.
+- **Por qué:** es la forma más directa de cumplir RF-201 y 04 §10, sin buscar después en el documento lo que se acaba de crear (00 §6, paso 2).
+- **Archivos afectados:** `src/store/projectStore.ts`.
+
+## DI-37 · 2026-11-17 · T-009
+- **Hueco o contradicción:** 04 §3.2 dice que `engineSync` mantiene al motor al día, pero no dice quién lo pone en marcha. `src/ui/` no puede importar `src/bridge/` (04 §9), así que un componente no puede pasarle el puente.
+- **Decisión tomada:** `engineSync.ts` exporta `startEngineSync(target)`, que devuelve la función que lo detiene y se prueba con un motor falso. Al cargarse el módulo, se pone en marcha con el `bridge` en uso, igual que `engineStore` (DI-33). Basta con que la interfaz importe el módulo.
+- **Por qué:** es el mismo mecanismo que ya usa `engineStore`, sin funciones nuevas en `bridge/` ni en `ui/` (00 §6, paso 2).
+- **Archivos afectados:** `src/store/engineSync.ts`.
+
+## DI-38 · 2026-11-17 · T-009
+- **Hueco o contradicción:** 08 §14, punto 3, pide que una tarea que añade una función a `core/commands/` la añada a la prueba de invariantes de 08 §4.2. Pero esa prueba (`src/core/commands/invariants.test.ts`) es de T-019, y la función `checkInvariants` en la que se apoya es de T-012. Las dos son posteriores a T-009.
+- **Decisión tomada:** T-009 no crea la prueba de invariantes ni `checkInvariants`. `createRhythmTrack` y `toggleStep` se prueban en `tracks.test.ts` y `patterns.test.ts`: caso normal, límites y cada motivo de rechazo, comprobando que un rechazo deja el documento igual. T-019 las incluirá, porque su criterio 1 exige las 40 funciones de `core/commands/`.
+- **Por qué:** para el orden del trabajo y el alcance de cada tarea manda 09 (00 §5), y T-009 no puede crear archivos de T-012 ni de T-019 (09 §1.3, regla 5).
+- **Archivos afectados:** `src/core/commands/tracks.test.ts`, `src/core/commands/patterns.test.ts`.
