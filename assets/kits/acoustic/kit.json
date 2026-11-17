@@ -1,0 +1,14 @@
+{
+  "id": "acoustic",
+  "name": { "es": "Batería acústica", "en": "Acoustic drums" },
+  "sounds": [
+    { "role": "low",       "file": "low.wav",        "name": { "es": "Bombo", "en": "Kick" },                    "chokeGroup": null },
+    { "role": "snare",     "file": "snare.wav",      "name": { "es": "Caja", "en": "Snare" },                    "chokeGroup": null },
+    { "role": "clap",      "file": "clap.wav",       "name": { "es": "Aro", "en": "Rimshot" },                   "chokeGroup": null },
+    { "role": "hatClosed", "file": "hat-closed.wav", "name": { "es": "Charles cerrado", "en": "Closed hi-hat" }, "chokeGroup": "hat" },
+    { "role": "hatOpen",   "file": "hat-open.wav",   "name": { "es": "Charles abierto", "en": "Open hi-hat" },   "chokeGroup": "hat" },
+    { "role": "tom",       "file": "tom.wav",        "name": { "es": "Tom", "en": "Tom" },                       "chokeGroup": null },
+    { "role": "accent",    "file": "accent.wav",     "name": { "es": "Crash", "en": "Crash" },                   "chokeGroup": null },
+    { "role": "extra",     "file": "extra.wav",      "name": { "es": "Ride", "en": "Ride" },                     "chokeGroup": null }
+  ]
+}

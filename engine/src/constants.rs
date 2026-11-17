@@ -42,6 +42,10 @@ pub const FADER_MAX_DB: f64 = 6.0;
 pub const ROW_GAIN_MIN_DB: f64 = -48.0;
 /// Highest row volume, in dB.
 pub const ROW_GAIN_MAX_DB: f64 = 6.0;
+/// Lowest gain of an equalizer band, in dB.
+pub const EQ_GAIN_MIN_DB: f64 = -12.0;
+/// Highest gain of an equalizer band, in dB.
+pub const EQ_GAIN_MAX_DB: f64 = 12.0;
 /// Frequency of the low equalizer band, in Hz.
 pub const EQ_LOW_HZ: f64 = 150.0;
 /// Frequency of the mid equalizer band, in Hz.
@@ -79,7 +83,7 @@ mod tests {
     #[test]
     fn numeric_constants_match_the_fixture() {
         let fixture = fixture();
-        let constants: [(&str, f64); 20] = [
+        let constants: [(&str, f64); 22] = [
             ("SAMPLE_RATE", f64::from(SAMPLE_RATE)),
             ("PPQ", PPQ as f64),
             ("TICKS_PER_STEP", TICKS_PER_STEP as f64),
@@ -95,6 +99,8 @@ mod tests {
             ("FADER_MAX_DB", FADER_MAX_DB),
             ("ROW_GAIN_MIN_DB", ROW_GAIN_MIN_DB),
             ("ROW_GAIN_MAX_DB", ROW_GAIN_MAX_DB),
+            ("EQ_GAIN_MIN_DB", EQ_GAIN_MIN_DB),
+            ("EQ_GAIN_MAX_DB", EQ_GAIN_MAX_DB),
             ("EQ_LOW_HZ", EQ_LOW_HZ),
             ("EQ_MID_HZ", EQ_MID_HZ),
             ("EQ_HIGH_HZ", EQ_HIGH_HZ),
