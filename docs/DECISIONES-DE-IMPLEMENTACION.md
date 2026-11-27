@@ -337,3 +337,15 @@ tarea (`docs/spec/00-indice.md` §6). Cada entrada se añade al final con esta p
 - **Decisión tomada:** `{n}` es el índice del paso en el patrón más 1: el primer paso de la fila del bombo se llama «Bombo, paso 1», y el último de un patrón de un compás en 4/4, «Bombo, paso 16».
 - **Por qué:** es la misma regla que 00 §3.5 da para los compases, y la de los números de pulso que 03 §8.1 pone sobre la rejilla, que empiezan en 1. Un usuario cuenta desde 1 (PD-01, 00 §6, paso 2).
 - **Archivos afectados:** `src/ui/rhythm/StepGrid.tsx`.
+
+## DI-41 · 2026-11-27 · T-011
+- **Hueco o contradicción:** 05 §9.1 define los tipos `PresetsFile`, `RhythmPreset` y `Role`, pero 04 §3.1 solo asigna a `core/model.ts` los tipos de 05 §3 y §10, y ningún documento dice dónde van los de 05 §9.
+- **Decisión tomada:** `PresetsFile` y `RhythmPreset` se definen en `src/core/presets.ts`, el único módulo que lee `presets.json`. `Role` y `ROLES`, la lista de funciones en el orden de las filas (05 §8.1), se definen en `src/core/kits.ts`, porque son el orden de los sonidos de un kit. `presets.ts` los importa de ahí para convertir las cadenas por función en filas. `model.ts` no cambia.
+- **Por qué:** cada tipo queda junto al único módulo que lo lee, sin ampliar el contenido de `model.ts` que fija 04 §3.1, y el orden de las funciones se escribe en un solo sitio (00 §6, paso 2).
+- **Archivos afectados:** `src/core/presets.ts`, `src/core/kits.ts`.
+
+## DI-42 · 2026-11-27 · T-011
+- **Hueco o contradicción:** 08 §4.1 pide probar en `factory.ts` e `ids.ts` los «nombres por defecto en los dos idiomas», pero T-011 (09 §5) dice que las funciones de la fábrica reciben el nombre ya traducido y que `core/` no conoce los idiomas. Además, el número de «Ritmo N» lo calcula `createRhythmTrack` (DI-35), no la fábrica.
+- **Decisión tomada:** `src/core/factory.test.ts` comprueba que cada función de la fábrica que recibe un nombre por defecto (`newPattern`, `newRhythmTrack`, `newAudioTrack` y `newAudioSource`) lo guarda tal cual, tanto en español como en inglés, con los textos de 03 §14.2. La prueba no importa `src/i18n/`. Elegir el número del nombre se sigue probando en `core/commands/`.
+- **Por qué:** es lo único que la fábrica hace con los nombres, y `core/` no puede depender de `i18n/` (04 §9). Es lo más simple que cumple a la vez 08 §4.1 y T-011 (00 §6, paso 2).
+- **Archivos afectados:** `src/core/factory.test.ts`.

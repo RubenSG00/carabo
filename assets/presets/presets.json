@@ -1,0 +1,173 @@
+{
+  "presets": [
+    {
+      "id": "rock-basic",
+      "name": { "es": "Rock básico", "en": "Basic rock" },
+      "timeSignature": "4/4",
+      "bars": 1,
+      "rows": {
+        "low":       "x-------x-------",
+        "snare":     "----x-------x---",
+        "hatClosed": "x-x-x-x-x-x-x-x-"
+      }
+    },
+    {
+      "id": "rock-driving",
+      "name": { "es": "Rock a corcheas", "en": "Driving rock" },
+      "timeSignature": "4/4",
+      "bars": 1,
+      "rows": {
+        "low":       "x-----x-x-x-----",
+        "snare":     "----x-------x---",
+        "hatClosed": "x-x-x-x-x-x-x-x-",
+        "accent":    "x---------------"
+      }
+    },
+    {
+      "id": "pop",
+      "name": { "es": "Pop", "en": "Pop" },
+      "timeSignature": "4/4",
+      "bars": 1,
+      "rows": {
+        "low":       "x------x--x-----",
+        "snare":     "----x-------x---",
+        "clap":      "----x-------x---",
+        "hatClosed": "x-x-x-x-x-x-x-x-"
+      }
+    },
+    {
+      "id": "ballad",
+      "name": { "es": "Balada", "en": "Ballad" },
+      "timeSignature": "4/4",
+      "bars": 1,
+      "rows": {
+        "low":       "x---------x-----",
+        "clap":      "----x-------x---",
+        "hatClosed": "x-x-x-x-x-x-x-x-"
+      }
+    },
+    {
+      "id": "funk",
+      "name": { "es": "Funk", "en": "Funk" },
+      "timeSignature": "4/4",
+      "bars": 1,
+      "rows": {
+        "low":       "x--x--x---x--x--",
+        "snare":     "----x--x-x--x---",
+        "hatClosed": "xxxxxxxxxxxxxxxx"
+      }
+    },
+    {
+      "id": "disco",
+      "name": { "es": "Disco", "en": "Disco" },
+      "timeSignature": "4/4",
+      "bars": 1,
+      "rows": {
+        "low":       "x---x---x---x---",
+        "snare":     "----x-------x---",
+        "hatClosed": "x---x---x---x---",
+        "hatOpen":   "--x---x---x---x-"
+      }
+    },
+    {
+      "id": "hiphop",
+      "name": { "es": "Hip-hop", "en": "Hip-hop" },
+      "timeSignature": "4/4",
+      "bars": 1,
+      "rows": {
+        "low":       "x-----x---x--x--",
+        "snare":     "----x-------x---",
+        "hatClosed": "x-x-x-x-x-x-x-x-"
+      }
+    },
+    {
+      "id": "reggae",
+      "name": { "es": "Reggae", "en": "Reggae" },
+      "timeSignature": "4/4",
+      "bars": 1,
+      "rows": {
+        "low":       "--------x-------",
+        "clap":      "--------x-------",
+        "hatClosed": "x-x-x-x-x-x-x-x-"
+      }
+    },
+    {
+      "id": "rumba",
+      "name": { "es": "Rumba", "en": "Rumba" },
+      "timeSignature": "4/4",
+      "bars": 1,
+      "rows": {
+        "low":       "x-----x-----x---",
+        "snare":     "----x-----x---x-",
+        "clap":      "--x---x---x---x-",
+        "hatClosed": "x-x-x-x-x-x-x-x-"
+      }
+    },
+    {
+      "id": "bossa",
+      "name": { "es": "Bossa nova", "en": "Bossa nova" },
+      "timeSignature": "4/4",
+      "bars": 2,
+      "rows": {
+        "low":       "x-----x-x-----x-x-----x-x-----x-",
+        "clap":      "x-----x-----x-------x-----x-----",
+        "hatClosed": "x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-"
+      }
+    },
+    {
+      "id": "country",
+      "name": { "es": "Country", "en": "Country" },
+      "timeSignature": "4/4",
+      "bars": 1,
+      "rows": {
+        "low":       "x-------x-------",
+        "snare":     "----x-------x---",
+        "hatClosed": "x-xxx-xxx-xxx-xx"
+      }
+    },
+    {
+      "id": "waltz",
+      "name": { "es": "Vals", "en": "Waltz" },
+      "timeSignature": "3/4",
+      "bars": 1,
+      "rows": {
+        "low":       "x-----------",
+        "snare":     "----x---x---",
+        "hatClosed": "x-x-x-x-x-x-"
+      }
+    },
+    {
+      "id": "waltz-slow",
+      "name": { "es": "Vals lento", "en": "Slow waltz" },
+      "timeSignature": "3/4",
+      "bars": 1,
+      "rows": {
+        "low":       "x-----------",
+        "clap":      "----x---x---",
+        "hatClosed": "x---x---x---"
+      }
+    },
+    {
+      "id": "ballad-68",
+      "name": { "es": "Balada 6/8", "en": "6/8 ballad" },
+      "timeSignature": "6/8",
+      "bars": 1,
+      "rows": {
+        "low":       "x---------x-",
+        "snare":     "------x-----",
+        "hatClosed": "x-x-x-x-x-x-"
+      }
+    },
+    {
+      "id": "blues-68",
+      "name": { "es": "Blues 6/8", "en": "6/8 blues" },
+      "timeSignature": "6/8",
+      "bars": 1,
+      "rows": {
+        "low":       "x-----------",
+        "snare":     "------x-----",
+        "hatClosed": "x---x-x---x-"
+      }
+    }
+  ]
+}

@@ -1,4 +1,7 @@
 import {
+  newAudioClip,
+  newAudioSource,
+  newAudioTrack,
   newChannelStrip,
   newPattern,
   newPatternBlock,
@@ -115,5 +118,83 @@ describe("newRhythmTrack", () => {
       patterns: [pattern],
       blocks: [block],
     });
+  });
+});
+
+describe("newAudioTrack", () => {
+  it("has no clips and the initial channel", () => {
+    expect(newAudioTrack("trk-4", "Audio 1", 3)).toEqual({
+      id: "trk-4",
+      type: "audio",
+      name: "Audio 1",
+      colorIndex: 3,
+      strip: newChannelStrip(),
+      clips: [],
+    });
+  });
+
+  it("does not share its channel or its clips with another track", () => {
+    const a = newAudioTrack("trk-1", "Audio 1", 0);
+    const b = newAudioTrack("trk-2", "Audio 2", 1);
+    expect(a.strip).not.toBe(b.strip);
+    expect(a.strip.effects).not.toBe(b.strip.effects);
+    expect(a.clips).not.toBe(b.clips);
+  });
+});
+
+describe("newAudioClip", () => {
+  it("does not repeat and its region is as long as the clip", () => {
+    expect(newAudioClip("clip-7", "src-6", 1920, 2400, 43200, 5)).toEqual({
+      id: "clip-7",
+      sourceId: "src-6",
+      startTick: 1920,
+      lengthFrames: 43200,
+      regionStartFrame: 2400,
+      regionLengthFrames: 43200,
+      repeat: false,
+      z: 5,
+    });
+  });
+});
+
+describe("newAudioSource", () => {
+  it("keeps the values it receives", () => {
+    expect(newAudioSource("src-6", "take", "audio/take-0001.wav", "Toma 1", 48000, 1)).toEqual({
+      id: "src-6",
+      kind: "take",
+      file: "audio/take-0001.wav",
+      name: "Toma 1",
+      frames: 48000,
+      channels: 1,
+    });
+    expect(newAudioSource("src-2", "import", "audio/import-0001.wav", "Guitar", 96000, 2)).toEqual({
+      id: "src-2",
+      kind: "import",
+      file: "audio/import-0001.wav",
+      name: "Guitar",
+      frames: 96000,
+      channels: 2,
+    });
+  });
+});
+
+describe("default names (03 §14.2)", () => {
+  // core/ does not know the languages: the caller gives the name already translated, and the
+  // factory keeps it as it is, in either language.
+  it("keep the name given in Spanish or in English", () => {
+    const names = {
+      es: { rhythm: "Ritmo 1", pattern: "Patrón 1", audio: "Audio 1", take: "Toma 1" },
+      en: { rhythm: "Rhythm 1", pattern: "Pattern 1", audio: "Audio 1", take: "Take 1" },
+    };
+    for (const name of [names.es, names.en]) {
+      const pattern = newPattern("pat-2", name.pattern, "4/4");
+      const block = newPatternBlock("blk-3", "pat-2", 0, 16, 1);
+      expect(pattern.name).toBe(name.pattern);
+      expect(newRhythmTrack("trk-1", name.rhythm, 0, pattern, block).name).toBe(name.rhythm);
+      expect(newAudioTrack("trk-4", name.audio, 1).name).toBe(name.audio);
+      expect(newAudioSource("src-5", "take", "audio/take-0001.wav", name.take, 1, 1).name).toBe(
+        name.take,
+      );
+    }
   });
 });
