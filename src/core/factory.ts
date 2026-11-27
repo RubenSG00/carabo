@@ -1,9 +1,11 @@
 // New project elements with the initial values of 05 §3.5. The functions receive everything
 // that is not an initial value (identifiers, names, positions), so they know nothing about
-// counters or languages.
-// TODO(T-011): audio tracks, clips and sources.
+// counters or languages: a default name arrives already translated (03 §14.2).
 import { KIT_ROWS, TEMPO_DEFAULT } from "./constants";
 import type {
+  AudioClip,
+  AudioSource,
+  AudioTrack,
   ChannelStrip,
   Pattern,
   PatternBlock,
@@ -95,4 +97,45 @@ export function newRhythmTrack(
     patterns: [pattern],
     blocks: [block],
   };
+}
+
+/** An audio track with no clips and the initial channel. */
+export function newAudioTrack(id: string, name: string, colorIndex: number): AudioTrack {
+  return { id, type: "audio", name, colorIndex, strip: newChannelStrip(), clips: [] };
+}
+
+/**
+ * A recorded or imported clip: it does not repeat and its region is as long as the clip
+ * (`regionLengthFrames = lengthFrames`).
+ */
+export function newAudioClip(
+  id: string,
+  sourceId: string,
+  startTick: number,
+  regionStartFrame: number,
+  lengthFrames: number,
+  z: number,
+): AudioClip {
+  return {
+    id,
+    sourceId,
+    startTick,
+    lengthFrames,
+    regionStartFrame,
+    regionLengthFrames: lengthFrames,
+    repeat: false,
+    z,
+  };
+}
+
+/** An audio file of the project folder (05 §6.2). */
+export function newAudioSource(
+  id: string,
+  kind: AudioSource["kind"],
+  file: string,
+  name: string,
+  frames: number,
+  channels: AudioSource["channels"],
+): AudioSource {
+  return { id, kind, file, name, frames, channels };
 }
